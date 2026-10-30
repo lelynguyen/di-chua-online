@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { audio } from '../audio/audioManager'
 import { useStore, type Interactable } from '../store'
+import { stoneTexture, tileTexture, woodTexture } from './textures'
+
+/** Bỏ qua "click" thực chất là kéo camera xoay (R3F báo delta = quãng kéo, px). */
+function isDragClick(e: { delta?: number }): boolean { return (e.delta ?? 0) > 6 }
+function setCursor(pointer: boolean) { document.body.style.cursor = pointer ? 'pointer' : 'auto' }
 
 export const INTERACTABLES: Interactable[] = [
   { id: 'med-1', kind: 'meditation', label: 'Đệm thiền 1', hint: 'Nhấn E hoặc nút Tương tác để ngồi thiền', x: -4.5, z: -12 },
@@ -24,6 +29,7 @@ const WALLS: Array<[number, number, number, number]> = [
   [-6.4, -5.6, 15.6, 16.4], [-2.9, -2.1, 15.6, 16.4], [2.1, 2.9, 15.6, 16.4], [5.6, 6.4, 15.6, 16.4],
   [8.4, 9.6, 7.4, 8.6], // tháp chuông
   [6.9, 8.1, -11.6, -10.4], // bàn mõ
+  [-8.7, -6.3, -11.6, -10.4], // bàn tràng hạt
 ]
 const CIRCLES: Array<[number, number, number]> = [
   [-10, 6, 4.4], // hồ sen
@@ -39,16 +45,44 @@ function collides(x: number, z: number, r = 0.45): boolean {
 
 const WOOD = '#7a5230'
 const WOOD_DARK = '#5d3d22'
-const TILE = '#8e2f28'
 const GOLD = '#c9972f'
 const STONE = '#b8b0a0'
 
 function Roof({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
+  const tile = useMemo(() => tileTexture(4, 2), [])
   return (
     <group position={position}>
-      <mesh castShadow receiveShadow><boxGeometry args={size} /><meshStandardMaterial color={TILE} roughness={0.85} /></mesh>
-      <mesh position={[0, 0.35, 0]} castShadow><boxGeometry args={[size[0] * 0.55, 0.35, size[2] * 0.6]} /><meshStandardMaterial color={TILE} roughness={0.85} /></mesh>
+      <mesh castShadow receiveShadow><boxGeometry args={size} /><meshStandardMaterial map={tile} roughness={0.85} /></mesh>
+      <mesh position={[0, 0.35, 0]} castShadow><boxGeometry args={[size[0] * 0.55, 0.35, size[2] * 0.6]} /><meshStandardMaterial map={tile} roughness={0.85} /></mesh>
     </group>
+  )
+}
+
+function Smoke({ position }: { position: [number, number, number] }) {
+  const ref = useRef<THREE.Points>(null)
+  const { positions, seeds } = useMemo(() => {
+    const n = 36
+    const positions = new Float32Array(n * 3)
+    const seeds = Array.from({ length: n }, () => Math.random())
+    return { positions, seeds }
+  }, [])
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+    const t = clock.elapsedTime
+    const attr = ref.current.geometry.getAttribute('position') as THREE.BufferAttribute
+    for (let i = 0; i < seeds.length; i++) {
+      const p = ((t * 0.35 + seeds[i]) % 1)
+      attr.setXYZ(i, Math.sin((p * 6 + seeds[i] * 9)) * 0.12 * p, p * 1.4, Math.cos(p * 5 + seeds[i] * 7) * 0.12 * p)
+    }
+    attr.needsUpdate = true
+  })
+  return (
+    <points ref={ref} position={position}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.09} color="#dddddd" transparent opacity={0.45} sizeAttenuation depthWrite={false} />
+    </points>
   )
 }
 
@@ -149,7 +183,14 @@ function Controller() {
   const walk = useRef(0)
   const bellStrike = useRef(-10)
   const mokStrike = useRef(-10)
+  const bellDragY = useRef(0)
   const lastNearby = useRef<string | null>(null)
+  const malaBeads = useMemo(() => Array.from({ length: 108 }, (_, i) => {
+    const a = (i / 108) * Math.PI * 2
+    return [Math.cos(a) * 1.0, Math.sin(a) * 0.5] as const
+  }), [])
+  const ringBell = () => { audio.unlock(); audio.preloadSamples(); audio.bell(); bellStrike.current = performance.now() / 1000 }
+  const strikeMok = () => { audio.unlock(); audio.preloadSamples(); audio.mok(); mokStrike.current = performance.now() / 1000 }
   const interactNonce = useStore((s) => s.interactNonce)
 
   useEffect(() => {
@@ -279,27 +320,50 @@ function Controller() {
           <mesh position={[0, -0.08, 0]}><cylinderGeometry args={[0.4, 0.4, 0.06, 12]} /><meshStandardMaterial color="#4a7a3d" roughness={1} /></mesh>
         </group>
       ))}
-      {/* Tháp chuông */}
+      {/* Tháp chuông — bấm trực tiếp để thỉnh, hoặc kéo xuống để giật dây chuông */}
       <group position={[9, 0, 8]}>
         {[[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]].map(([x, z], i) => (
           <mesh key={i} position={[x, 1.6, z]} castShadow><cylinderGeometry args={[0.18, 0.22, 3.2, 8]} /><meshStandardMaterial color={WOOD} roughness={0.9} /></mesh>
         ))}
-        <group ref={bellRef} position={[0, 3.1, 0]}>
+        <group ref={bellRef} position={[0, 3.1, 0]}
+          onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); ringBell() }}
+          onPointerDown={(e) => { bellDragY.current = (e as unknown as { clientY: number }).clientY ?? 0 }}
+          onPointerUp={(e) => { const y = (e as unknown as { clientY: number }).clientY ?? 0; if (y - bellDragY.current > 40) ringBell() }}
+          onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
           <mesh castShadow><cylinderGeometry args={[0.35, 0.65, 1.0, 16]} /><meshStandardMaterial color="#8a6a2a" metalness={0.6} roughness={0.35} /></mesh>
+          {/* Dây chuông */}
+          <mesh position={[0, -0.9, 0]}><cylinderGeometry args={[0.02, 0.02, 0.8, 6]} /><meshStandardMaterial color="#c9bda6" roughness={1} /></mesh>
         </group>
         <Roof position={[0, 3.9, 0]} size={[3.4, 0.35, 3.4]} />
       </group>
-      {/* Bàn mõ */}
+      {/* Bàn mõ — bấm trực tiếp vào mõ để gõ */}
       <group position={[7.5, 0, -11]}>
         <mesh position={[0, 0.45, 0]} castShadow><boxGeometry args={[1.2, 0.9, 0.7]} /><meshStandardMaterial color={WOOD} roughness={0.9} /></mesh>
-        <mesh position={[0, 1.05, 0]} castShadow><sphereGeometry args={[0.35, 16, 12]} /><meshStandardMaterial color="#a33b2e" roughness={0.6} /></mesh>
+        <mesh position={[0, 1.05, 0]} castShadow
+          onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); strikeMok() }}
+          onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
+          <sphereGeometry args={[0.35, 16, 12]} /><meshStandardMaterial color="#a33b2e" roughness={0.6} />
+        </mesh>
         <group ref={mokRef} position={[0.5, 1.3, 0.3]}>
           <mesh rotation={[0, 0, 0.8]}><cylinderGeometry args={[0.04, 0.04, 0.5, 8]} /><meshStandardMaterial color={WOOD_DARK} roughness={1} /></mesh>
         </group>
       </group>
-      {/* Đệm thiền — hiển thị rõ vị trí tương tác */}
+      {/* Bàn tràng hạt — bấm vào từng hạt để lần, không chỉ bấm nút HUD */}
+      <group position={[-7.5, 0, -11]}>
+        <mesh position={[0, 0.45, 0]} castShadow><boxGeometry args={[2.6, 0.9, 1.4]} /><meshStandardMaterial color={WOOD} roughness={0.9} /></mesh>
+        {malaBeads.map(([bx, bz], i) => (
+          <mesh key={i} position={[bx, 0.95, bz]}
+            onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); audio.unlock(); audio.tick(); useStore.getState().incrementMala() }}
+            onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
+            <sphereGeometry args={[0.045, 10, 8]} /><meshStandardMaterial color="#4a2f1a" roughness={0.7} />
+          </mesh>
+        ))}
+      </group>
+      {/* Đệm thiền — bấm trực tiếp vào đệm để mở panel thiền cho đệm đó */}
       {INTERACTABLES.filter((i) => i.kind === 'meditation').map((it) => (
-        <group key={it.id} position={[it.x, 0.32, it.z]}>
+        <group key={it.id} position={[it.x, 0.32, it.z]}
+          onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); useStore.getState().setNearby(it); useStore.getState().setPanel('meditation') }}
+          onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
           <mesh receiveShadow><cylinderGeometry args={[0.55, 0.6, 0.18, 20]} /><meshStandardMaterial color="#7a2e2e" roughness={1} /></mesh>
           <mesh position={[0, 0.12, 0]}><cylinderGeometry args={[0.45, 0.45, 0.08, 20]} /><meshStandardMaterial color="#a84438" roughness={1} /></mesh>
         </group>
@@ -309,18 +373,35 @@ function Controller() {
 }
 
 function Hall() {
+  const [incenseLit, setIncenseLit] = useState(false)
+  const wood = useMemo(() => woodTexture(3, 3), [])
+  const stone = useMemo(() => stoneTexture(3, 3), [])
   return (
     <group>
-      <mesh position={[0, 0.15, -14]} receiveShadow><boxGeometry args={[21, 0.3, 17]} /><meshStandardMaterial color="#9a7a52" roughness={0.9} /></mesh>
-      <mesh position={[0, 2.5, -21.8]} castShadow receiveShadow><boxGeometry args={[20, 5, 0.4]} /><meshStandardMaterial color="#e8dcc0" roughness={0.95} /></mesh>
-      <mesh position={[-10, 2.5, -14]} castShadow><boxGeometry args={[0.4, 5, 16]} /><meshStandardMaterial color="#e8dcc0" roughness={0.95} /></mesh>
-      <mesh position={[10, 2.5, -14]} castShadow><boxGeometry args={[0.4, 5, 16]} /><meshStandardMaterial color="#e8dcc0" roughness={0.95} /></mesh>
+      <mesh position={[0, 0.15, -14]} receiveShadow><boxGeometry args={[21, 0.3, 17]} /><meshStandardMaterial map={wood} roughness={0.9} /></mesh>
+      <mesh position={[0, 2.5, -21.8]} castShadow receiveShadow><boxGeometry args={[20, 5, 0.4]} /><meshStandardMaterial map={stone} color="#e8dcc0" roughness={0.95} /></mesh>
+      <mesh position={[-10, 2.5, -14]} castShadow><boxGeometry args={[0.4, 5, 16]} /><meshStandardMaterial map={stone} color="#e8dcc0" roughness={0.95} /></mesh>
+      <mesh position={[10, 2.5, -14]} castShadow><boxGeometry args={[0.4, 5, 16]} /><meshStandardMaterial map={stone} color="#e8dcc0" roughness={0.95} /></mesh>
       {[-8, -4, 0, 4, 8].map((x) => (
         <mesh key={x} position={[x, 2.5, -6.2]} castShadow><cylinderGeometry args={[0.28, 0.32, 5, 10]} /><meshStandardMaterial color={WOOD} roughness={0.9} /></mesh>
       ))}
       <Roof position={[0, 6.1, -14]} size={[23, 0.5, 19]} />
-      {/* Bàn thờ */}
-      <mesh position={[0, 0.75, -19.2]} castShadow><boxGeometry args={[5, 1.0, 1.6]} /><meshStandardMaterial color={WOOD} roughness={0.9} /></mesh>
+      {/* Bàn thờ — bấm trực tiếp để mở kinh sách (tượng Phật không bấm/kéo được) */}
+      <mesh position={[0, 0.75, -19.2]} castShadow
+        onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); useStore.getState().setPanel('sutra') }}
+        onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
+        <boxGeometry args={[5, 1.0, 1.6]} /><meshStandardMaterial map={wood} roughness={0.9} />
+      </mesh>
+      {/* Lư hương trên bàn thờ — bấm để thắp/tắt hương, khói bay lên khi thắp */}
+      <group position={[0, 1.45, -18.6]}
+        onClick={(e) => { if (isDragClick(e)) return; e.stopPropagation(); setIncenseLit((v) => !v) }}
+        onPointerOver={() => setCursor(true)} onPointerOut={() => setCursor(false)}>
+        <mesh castShadow><cylinderGeometry args={[0.28, 0.2, 0.3, 16]} /><meshStandardMaterial color="#6a4a2a" metalness={0.4} roughness={0.5} /></mesh>
+        {[[-0.08, 0], [0.08, 0], [0, 0.08]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.35, z]}><cylinderGeometry args={[0.008, 0.008, 0.4, 4]} /><meshStandardMaterial color={incenseLit ? '#ff5a3c' : '#8a7a6a'} emissive={incenseLit ? '#ff3300' : '#000000'} emissiveIntensity={incenseLit ? 1.2 : 0} /></mesh>
+        ))}
+      </group>
+      {incenseLit && <Smoke position={[0, 1.85, -18.6]} />}
       {[[-2, -19.2], [2, -19.2]].map(([x, z], i) => (
         <mesh key={i} position={[x, 1.6, z]}><cylinderGeometry args={[0.05, 0.05, 0.7, 8]} /><meshStandardMaterial color="#e8c766" emissive="#ffaa22" emissiveIntensity={0.8} /></mesh>
       ))}
@@ -330,10 +411,11 @@ function Hall() {
 }
 
 function Gate() {
+  const stone = useMemo(() => stoneTexture(2, 2), [])
   return (
     <group position={[0, 0, 16]}>
       {[-6, -2.5, 2.5, 6].map((x) => (
-        <mesh key={x} position={[x, 2.5, 0]} castShadow><boxGeometry args={[0.8, 5, 0.8]} /><meshStandardMaterial color={STONE} roughness={0.95} /></mesh>
+        <mesh key={x} position={[x, 2.5, 0]} castShadow><boxGeometry args={[0.8, 5, 0.8]} /><meshStandardMaterial map={stone} roughness={0.95} /></mesh>
       ))}
       <Roof position={[0, 5.6, 0]} size={[15, 0.5, 3.2]} />
       <mesh position={[0, 4.4, 0.5]}><boxGeometry args={[3.2, 0.9, 0.15]} /><meshStandardMaterial color={GOLD} metalness={0.3} roughness={0.5} /></mesh>

@@ -382,7 +382,7 @@ export default function HUD() {
           <button className="btn-ghost rounded-xl px-3 py-2 text-sm" onClick={() => setPanel(panel === 'settings' ? 'none' : 'settings')}>⚙️ Cài đặt</button>
         </div>
       </div>
-      <p className="pointer-events-none pb-2 text-center text-[11px] text-white/50">WASD / mũi tên để đi · Kéo chuột xoay camera · Phím E để tương tác · Trên điện thoại dùng joystick.</p>
+      <p className="pointer-events-none pb-2 text-center text-[11px] text-white/50">WASD / mũi tên để đi · Kéo chuột xoay camera · Phím E để tương tác · Trên điện thoại dùng joystick. Thử bấm trực tiếp vào chuông, mõ, đệm thiền, tràng hạt, bàn thờ và lư hương trong 3D.</p>
     </div>
   )
 }
