@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: #171310; color: #f5efe4; font-family: system-ui, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
+* { -webkit-tap-highlight-color: transparent; }
+canvas { touch-action: none; display: block; }
+.panel { background: rgba(24, 19, 14, 0.92); border: 1px solid rgba(217, 180, 110, 0.35); backdrop-filter: blur(10px); }
+.btn-gold { background: #c9972f; color: #1c1508; font-weight: 700; }
+.btn-gold:hover { background: #dfae45; }
+.btn-ghost { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18); }
+.btn-ghost:hover { background: rgba(255,255,255,0.18); }
+input, select { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22); border-radius: 10px; padding: 9px 11px; color: #fff; width: 100%; outline: none; }
+input:focus, select:focus { border-color: #d9b46e; }
+@keyframes pulse-soft { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
