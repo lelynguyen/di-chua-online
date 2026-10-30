@@ -108,7 +108,7 @@ export const useStore = create<State>((set, get) => ({
   meditation: null,
   malaCount: 0,
   malaShowCounter: true,
-  sutraId: 'bat-nha',
+  sutraId: 'chu-dai-bi',
   sutraMode: 'read',
   fontSize: 18,
   history: loadArr<HistoryEntry>('dco-history'),

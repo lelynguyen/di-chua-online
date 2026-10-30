@@ -29,13 +29,17 @@ npm run preview    # chạy bản build
   5/10/15/30/60 phút hoặc không giới hạn, tạm dừng/tiếp tục/kết thúc.
   Thời gian lưu là thời gian thực (không cộng lúc tạm dừng), lưu vào
   `localStorage` trên trình duyệt.
-- **Âm thanh (`src/audio/audioManager.ts`, độc lập với engine 3D)**: Web Audio API
-  tổng hợp chuông, mõ, tiếng môi trường và tiếng lần hạt; volume riêng từng kênh;
-  có compressor chống méo khi chồng tiếng. **Không tự phát tiếng khi mở trang.**
+- **Âm thanh (`src/audio/audioManager.ts`, độc lập với engine 3D)**: ưu tiên bản thu
+  thật CC0 trong `public/audio/` (chuông chùa, mõ, chim/gió — xem
+  `public/audio/ATTRIBUTION.md`); nếu file thiếu thì dùng Web Audio tổng hợp làm
+  dự phòng. Volume riêng từng kênh; có compressor chống méo khi chồng tiếng.
+  **Không tự phát tiếng khi mở trang.**
 - **Tràng hạt**: 108 hạt/vòng, ẩn/hiện bộ đếm, đặt lại. Số lần lần hạt chỉ là
   công cụ đếm, không được trình bày như công đức.
-- **Kinh sách**: thư viện mở rộng được (`src/data/sutras.ts`) với Bát Nhã Tâm Kinh,
-  Kinh Pháp Cú, Kinh A Di Đà. Xem ghi chú kiểm chứng bên dưới.
+- **Kinh sách**: thư viện mở rộng được (`src/data/sutras.ts`) với Chú Đại Bi,
+  Bát Nhã Tâm Kinh, Kinh Pháp Cú, Kinh A Di Đà, kèm trình phát tụng thật
+  (phát/dừng/tua/lặp/tốc độ) khi bài có file có giấy phép. Xem ghi chú kiểm
+  chứng bên dưới.
 - **Tài khoản**: chế độ khách trên trình duyệt, tên hiển thị, lịch sử thiền,
   cài đặt chất lượng Low/Medium/High, xóa dữ liệu cá nhân.
 - **Hiệu năng**: Low tắt bóng đổ, Medium/High tăng dần độ phân giải bóng và
@@ -53,8 +57,11 @@ npm run preview    # chạy bản build
   Chế độ “Nghe” dùng giọng đọc tổng hợp của trình duyệt, không phải bản tụng
   niệm đã thu âm. Khi có bản dịch/bản thu có giấy phép, thêm `audioUrl` hoặc
   `fullTextUrl` vào `src/data/sutras.ts`.
-- **Âm thanh**: chuông/mõ/môi trường được tổng hợp bằng Web Audio, không dùng
-  file thu âm chưa rõ giấy phép.
+- **Âm thanh**: chuông/mõ/môi trường dùng bản thu thật CC0 (xem
+  `public/audio/ATTRIBUTION.md`), dự phòng bằng Web Audio khi file thiếu.
+  Chưa có bản tụng thật nào được tích hợp, kể cả Chú Đại Bi, vì chưa có file
+  có giấy phép dùng lại rõ ràng — không dùng bản thu lậu hay giọng máy giả
+  làm tụng thật.
 
 ## Tài khoản thật với Supabase (Giai đoạn 4, chưa bật)
 

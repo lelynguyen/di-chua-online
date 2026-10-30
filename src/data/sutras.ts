@@ -4,8 +4,12 @@
  * QUAN TRỌNG VỀ NỘI DUNG: các mục dưới đây chỉ là THÔNG TIN MÔ TẢ và TRÍCH DẪN NGẮN
  * THAM KHẢO để minh họa giao diện. Chúng KHÔNG phải là bản kinh đầy đủ, KHÔNG được
  * giới thiệu là bản dịch chính thức, và phải được đối chiếu với bản in có uy tín
- * trước khi dùng cho nghi lễ hay công bố rộng rãi. Khi có bản dịch / bản thu có
- * giấy phép, chỉ cần thêm `fullTextUrl` hoặc `audioUrl` vào mục tương ứng.
+ * trước khi dùng cho nghi lễ hay công bố rộng rãi.
+ *
+ * ÂM THANH TỤNG THẬT: chỉ gắn `audioUrl` khi file đó có giấy phép dùng lại rõ ràng
+ * (mua bản quyền, CC, hoặc chủ sở hữu cho phép) và ghi rõ nguồn/giấy phép vào
+ * `audioSource`. Không gắn link YouTube hay file tải lậu. File đặt trong
+ * public/audio/, ví dụ public/audio/chu-dai-bi.mp3 rồi đặt audioUrl: '/audio/chu-dai-bi.mp3'.
  */
 export interface Sutra {
   id: string
@@ -13,11 +17,20 @@ export interface Sutra {
   description: string
   /** Trích dẫn ngắn tham khảo, hiển thị kèm ghi chú kiểm chứng. */
   excerpt: string
+  /** Bản tụng thật có giấy phép; nếu trống nghĩa là CHƯA CÓ, không được giả vờ là có. */
   audioUrl?: string
+  audioSource?: string
   fullTextUrl?: string
 }
 
 export const SUTRAS: Sutra[] = [
+  {
+    id: 'chu-dai-bi',
+    title: 'Chú Đại Bi (Đại Bi Tâm Đà La Ni)',
+    description: 'Thần chú của Bồ Tát Quán Thế Âm, thường trì tụng cầu an và phát khởi lòng từ bi. Bản tụng thật đang chờ file có giấy phép — xem ghi chú bên dưới.',
+    excerpt:
+      'Chưa có bản tụng thật và chưa có toàn văn trong bản này. Khi có file tụng có giấy phép, bài này sẽ phát bằng bản thu thật, kèm lời hiển thị và ghi rõ nguồn/người tụng.',
+  },
   {
     id: 'bat-nha',
     title: 'Bát Nhã Tâm Kinh',
@@ -42,4 +55,4 @@ export const SUTRAS: Sutra[] = [
 ]
 
 export const SUTRA_NOTE =
-  'Lưu ý: Nội dung hiển thị trong bản mẫu là trích dẫn ngắn tham khảo, không phải bản kinh đầy đủ và chưa thay thế bản dịch chính thức. Chế độ “Nghe” dùng giọng đọc tổng hợp của trình duyệt (nếu có), không phải bản tụng niệm đã thu âm.'
+  'Lưu ý: Nội dung hiển thị là trích dẫn ngắn tham khảo, không phải bản kinh đầy đủ và chưa thay thế bản dịch chính thức. Chỉ những bài có ghi nguồn bản thu mới phát bằng giọng tụng thật; các bài chưa có file sẽ nói rõ là chưa có, thay vì dùng giọng máy giả làm tụng thật.'

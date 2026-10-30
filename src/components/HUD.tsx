@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio } from '../audio/audioManager'
+import { chantPlayer } from '../audio/chantPlayer'
 import { SUTRAS, SUTRA_NOTE } from '../data/sutras'
 import { clearPersonalData, meditationElapsedMs, useStore } from '../store'
 import { INTERACTABLES } from '../three/TempleScene'
@@ -102,12 +103,24 @@ function MeditationPanel() {
 }
 
 function SutraPanel() {
-  const { sutraId, setSutra, sutraMode, setSutraMode, fontSize, setFontSize, setPanel } = useStore()
+  const { sutraId, setSutra, sutraMode, setSutraMode, fontSize, setFontSize, setPanel, volumes } = useStore()
   const [speaking, setSpeaking] = useState(false)
+  const [chantState, setChantState] = useState({ playing: false, current: 0, duration: 0 })
+  const [repeat, setRepeat] = useState(false)
+  const [rate, setRate] = useState(1)
   const sutra = SUTRAS.find((s) => s.id === sutraId) ?? SUTRAS[0]
 
-  useEffect(() => () => { try { window.speechSynthesis?.cancel() } catch { /* noop */ } }, [])
-  useEffect(() => () => { try { window.speechSynthesis?.cancel() } catch { /* noop */ } }, [sutraId])
+  useEffect(() => () => { try { window.speechSynthesis?.cancel() } catch { /* noop */ } chantPlayer.stop() }, [])
+  useEffect(() => {
+    // Đổi bài: dừng cả giọng máy lẫn bản tụng thật, nạp lại bản tụng nếu có.
+    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
+    setSpeaking(false)
+    chantPlayer.stop()
+    if (sutra.audioUrl) { chantPlayer.load(sutra.audioUrl); chantPlayer.setVolume(volumes.chant) }
+    return () => { chantPlayer.stop() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sutraId])
+  useEffect(() => chantPlayer.onChange(setChantState), [])
 
   const toggleSpeech = () => {
     if (!('speechSynthesis' in window)) { alert('Trình duyệt này không hỗ trợ giọng đọc tổng hợp.'); return }
@@ -118,27 +131,53 @@ function SutraPanel() {
     u.onend = () => setSpeaking(false)
     window.speechSynthesis.speak(u); setSpeaking(true)
   }
+  const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
   return (
     <div className="panel rounded-2xl p-5 max-w-lg w-full max-h-[75vh] overflow-y-auto">
       <div className="flex justify-between items-start gap-3">
         <h2 className="text-lg font-bold">Kinh sách</h2>
-        <button className="btn-ghost rounded-lg px-3 py-1" onClick={() => { window.speechSynthesis?.cancel(); setPanel('none') }}>Đóng</button>
+        <button className="btn-ghost rounded-lg px-3 py-1" onClick={() => { window.speechSynthesis?.cancel(); chantPlayer.stop(); setPanel('none') }}>Đóng</button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {SUTRAS.map((s) => (
-          <button key={s.id} className={`rounded-xl px-3 py-2 text-sm ${s.id === sutraId ? 'btn-gold' : 'btn-ghost'}`} onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); setSutra(s.id) }}>{s.title}</button>
+          <button key={s.id} className={`rounded-xl px-3 py-2 text-sm ${s.id === sutraId ? 'btn-gold' : 'btn-ghost'}`} onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); setSutra(s.id) }}>{s.title}{s.audioUrl ? ' 🎙️' : ''}</button>
         ))}
       </div>
       <p className="mt-3 text-sm text-white/70">{sutra.description}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button className={`rounded-xl px-3 py-2 text-sm ${sutraMode === 'read' ? 'btn-gold' : 'btn-ghost'}`} onClick={() => setSutraMode('read')}>📖 Đọc kinh</button>
-        <button className={`rounded-xl px-3 py-2 text-sm ${sutraMode === 'listen' ? 'btn-gold' : 'btn-ghost'}`} onClick={() => setSutraMode('listen')}>🔊 Nghe (giọng máy)</button>
-        {sutraMode === 'listen' && <button className="btn-ghost rounded-xl px-3 py-2 text-sm" onClick={toggleSpeech}>{speaking ? '⏸ Dừng đọc' : '▶ Đọc trích dẫn'}</button>}
+        <button className={`rounded-xl px-3 py-2 text-sm ${sutraMode === 'listen' ? 'btn-gold' : 'btn-ghost'}`} onClick={() => setSutraMode('listen')}>🔊 Nghe tụng</button>
         <label className="text-sm text-white/70 ml-auto">Cỡ chữ
           <input type="range" min={14} max={28} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-24" />
         </label>
       </div>
+      {sutraMode === 'listen' && (
+        <div className="mt-3 rounded-xl bg-white/5 p-3">
+          {sutra.audioUrl ? (
+            <>
+              <p className="text-sm font-bold">🎙️ Bản tụng thật</p>
+              {sutra.audioSource && <p className="text-xs text-white/60">Nguồn: {sutra.audioSource}</p>}
+              <div className="mt-2 flex items-center gap-2">
+                <button className="btn-gold rounded-xl px-4 py-2" onClick={() => { audio.unlock(); audio.preloadSamples(); if (chantState.playing) chantPlayer.pause(); else void chantPlayer.play() }}>{chantState.playing ? '⏸ Tạm dừng' : '▶ Phát'}</button>
+                <button className={`rounded-xl px-3 py-2 text-sm ${repeat ? 'btn-gold' : 'btn-ghost'}`} onClick={() => { const r = !repeat; setRepeat(r); chantPlayer.setRepeat(r ? 'one' : 'off') }}>🔁 Lặp 1 bài</button>
+                <select className="w-24" value={rate} onChange={(e) => { const r = Number(e.target.value); setRate(r); chantPlayer.setRate(r) }}>
+                  {[0.75, 1, 1.25, 1.5].map((r) => <option key={r} value={r}>{r}×</option>)}
+                </select>
+                <span className="text-sm text-white/70 ml-auto">{fmtSec(chantState.current)} / {fmtSec(chantState.duration)}</span>
+              </div>
+              <input type="range" min={0} max={chantState.duration || 0} step={1} value={chantState.current}
+                onChange={(e) => chantPlayer.seek(Number(e.target.value))} className="mt-2 w-full" />
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-amber-200">Bài này chưa có bản tụng thật có giấy phép trong app.</p>
+              <p className="mt-1 text-xs text-white/60">Mình không dùng giọng máy giả làm tụng thật nữa làm mặc định. Nếu bạn có file tụng có quyền dùng, đặt vào public/audio/ và gắn audioUrl cho bài này là phát được ngay với trình phát ở trên.</p>
+              <button className="btn-ghost mt-2 rounded-xl px-3 py-2 text-sm" onClick={toggleSpeech}>{speaking ? '⏸ Dừng giọng máy (tạm)' : '▶ Nghe giọng đọc máy (tạm, không phải tụng thật)'}</button>
+            </>
+          )}
+        </div>
+      )}
       <p className="mt-4 leading-relaxed text-amber-50" style={{ fontSize }}>{sutra.excerpt}</p>
       <p className="mt-4 text-xs text-white/60">{SUTRA_NOTE}</p>
     </div>
@@ -163,11 +202,11 @@ function AudioPanel() {
   return (
     <div className="panel rounded-2xl p-5 max-w-md w-full">
       <div className="flex justify-between"><h2 className="text-lg font-bold">Âm thanh</h2><button className="btn-ghost rounded-lg px-3 py-1" onClick={() => setPanel('none')}>Đóng</button></div>
-      <p className="mt-1 text-xs text-white/60">Âm thanh chỉ bắt đầu sau khi bạn bật — không tự phát khi mở trang.</p>
+      <p className="mt-1 text-xs text-white/60">Âm thanh chỉ bắt đầu sau khi bạn bật — không tự phát khi mở trang. Chuông, mõ và môi trường hiện dùng bản thu thật CC0 (xem public/audio/ATTRIBUTION.md); nếu file thiếu, app tự dùng âm thanh tổng hợp dự phòng.</p>
       <div className="mt-3 space-y-3">
         <button className={`w-full rounded-xl px-4 py-2 ${ambientOn ? 'btn-gold' : 'btn-ghost'}`} onClick={() => {
-          audio.unlock()
-          if (ambientOn) { audio.stopAmbient(); setAmbientOn(false) } else { audio.startAmbient(); setAmbientOn(true) }
+          audio.unlock(); audio.preloadSamples()
+          if (ambientOn) { audio.stopAmbient(); setAmbientOn(false) } else { void audio.startAmbient(); setAmbientOn(true) }
         }}>{ambientOn ? '🔇 Tắt âm thanh môi trường' : '🌿 Bật âm thanh môi trường'}</button>
         {slider('Âm thanh môi trường', 'ambient')}
         {slider('Chuông', 'bell')}
