@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { audio } from '../audio/audioManager'
 import { useStore, type Interactable } from '../store'
 import { stoneTexture, tileTexture, woodTexture } from './textures'
+import { LicensedBuddha } from './Models'
 
 /** Bỏ qua "click" thực chất là kéo camera xoay (R3F báo delta = quãng kéo, px). */
 function isDragClick(e: { delta?: number }): boolean { return (e.delta ?? 0) > 6 }
@@ -103,29 +104,6 @@ function Tree({ position, phase }: { position: [number, number, number]; phase: 
         <mesh position={[0.8, 0.7, 0.3]} castShadow><sphereGeometry args={[1.1, 10, 8]} /><meshStandardMaterial color="#5d8f47" roughness={1} /></mesh>
         <mesh position={[-0.8, 0.6, -0.3]} castShadow><sphereGeometry args={[1.0, 10, 8]} /><meshStandardMaterial color="#437136" roughness={1} /></mesh>
       </group>
-    </group>
-  )
-}
-
-function Buddha() {
-  return (
-    <group position={[0, 0.6, -19]}>
-      {/* Đài sen */}
-      <mesh position={[0, 0.15, 0]} receiveShadow><cylinderGeometry args={[1.7, 1.9, 0.3, 24]} /><meshStandardMaterial color={STONE} roughness={0.9} /></mesh>
-      <mesh position={[0, 0.45, 0]}><cylinderGeometry args={[1.4, 1.6, 0.3, 24]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.45} /></mesh>
-      {/* Thân ngồi kiết già — mô hình thủ tục, có thể thay bằng file GLB có giấy phép trong public/models/ */}
-      <mesh position={[0, 0.95, 0]} castShadow><sphereGeometry args={[1, 24, 18]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 0.95, 0]} scale={[1.05, 0.45, 0.85]}><sphereGeometry args={[1, 24, 18]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 1.95, 0]} castShadow><sphereGeometry args={[1, 24, 18]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 1.95, 0]} scale={[0.78, 1.05, 0.58]}><sphereGeometry args={[1, 24, 18]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      {/* Đầu, nhục kế, hào quang */}
-      <mesh position={[0, 3.15, 0]} castShadow><sphereGeometry args={[0.44, 24, 18]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 3.55, 0]}><sphereGeometry args={[0.18, 16, 12]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 3.05, -0.42]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.95, 0.06, 10, 32]} /><meshStandardMaterial color="#e8c766" emissive="#a67c1a" emissiveIntensity={0.5} /></mesh>
-      {/* Tay đặt trong lòng */}
-      <mesh position={[-0.55, 1.55, 0.35]} rotation={[0, 0, 0.9]} castShadow><capsuleGeometry args={[0.14, 0.7, 4, 10]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0.55, 1.55, 0.35]} rotation={[0, 0, -0.9]} castShadow><capsuleGeometry args={[0.14, 0.7, 4, 10]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
-      <mesh position={[0, 1.15, 0.55]}><sphereGeometry args={[0.22, 16, 12]} /><meshStandardMaterial color={GOLD} metalness={0.35} roughness={0.4} /></mesh>
     </group>
   )
 }
@@ -405,7 +383,7 @@ function Hall() {
       {[[-2, -19.2], [2, -19.2]].map(([x, z], i) => (
         <mesh key={i} position={[x, 1.6, z]}><cylinderGeometry args={[0.05, 0.05, 0.7, 8]} /><meshStandardMaterial color="#e8c766" emissive="#ffaa22" emissiveIntensity={0.8} /></mesh>
       ))}
-      <Buddha />
+      <LicensedBuddha />
     </group>
   )
 }

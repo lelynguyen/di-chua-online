@@ -14,11 +14,15 @@ import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from '
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'audio')
-if (!existsSync(dir)) process.exit(0)
-
+const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
+const jobs = [
+  { dir: join(root, 'audio'), suffix: '.mp3.b64' },
+  { dir: join(root, 'models'), suffix: '.glb.b64' },
+]
+for (const { dir, suffix } of jobs) {
+if (!existsSync(dir)) continue
 for (const name of readdirSync(dir)) {
-  if (!name.endsWith('.mp3.b64')) continue
+  if (!name.endsWith(suffix)) continue
   const b64Path = join(dir, name)
   const mp3Path = join(dir, name.slice(0, -4))
   const b64Time = statSync(b64Path).mtimeMs
@@ -26,5 +30,6 @@ for (const name of readdirSync(dir)) {
   if (mp3Time >= b64Time) continue
   const mp3 = Buffer.from(readFileSync(b64Path, 'utf8').replace(/\s/g, ''), 'base64')
   writeFileSync(mp3Path, mp3)
-  console.log(`Decoded audio: ${name} -> ${mp3Path.split('/').pop()} (${mp3.length} bytes)`)
+  console.log(`Decoded asset: ${name} -> ${mp3Path.split('/').pop()} (${mp3.length} bytes)`)
+}
 }

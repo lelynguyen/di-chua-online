@@ -13,6 +13,8 @@ dist-ssr
 # File mp3 trong public/audio được giải mã từ *.mp3.b64 lúc build (xem scripts/decode-audio.mjs);
 # không push mp3 nhị phân trực tiếp vì connector GitHub chỉ nhận file UTF-8.
 public/audio/*.mp3
+# Tương tự cho model GLB trong public/models (giải mã từ *.glb.b64).
+public/models/*.glb
 *.local
 
 # Editor directories and files
