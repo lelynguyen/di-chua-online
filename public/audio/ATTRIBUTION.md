@@ -6,6 +6,13 @@ Tất cả các file dưới đây là bản preview HQ trên Freesound, giấy 
 (không bắt buộc ghi công, nhưng app vẫn ghi nguồn để tri ân và minh bạch).
 Có thể thay bằng bản WAV đầy đủ cùng tên file mà không cần đổi code.
 
+Lưu ý kỹ thuật: trong repo, các file mp3 được lưu dưới dạng
+`*.mp3.b64` (text) vì connector GitHub chỉ push được file UTF-8.
+Lúc build/dev, `scripts/decode-audio.mjs` (chạy qua `predev`/`prebuild`)
+tự giải mã chúng thành `*.mp3` trong `public/audio/`. Nếu bạn upload file
+`.mp3` thật lên repo bằng giao diện web GitHub, script sẽ không ghi đè
+lên file đó trừ khi file `.b64` mới hơn.
+
 - `bell.mp3` — “Bell at Daitokuji temple, Kyoto” — nahmandub, Freesound
   https://freesound.org/people/nahmandub/sounds/131348/ — CC0 1.0
   Chuông chùa thật, dài ~7,7 giây.
